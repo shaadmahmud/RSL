@@ -27,25 +27,25 @@ PIN_ADC1 = ADC(27)  # physcial pin 32, a401
 PIN_ADC0 = ADC(26)  # physical pin 31, Vref
 PIN_IO20 = Pin(20)  # physical pin 26, cancel button
 
-Ts = 0.02           # sampling period in sec
-Fs = 1/Ts           # sampling frequency
-t_dur = 10          # duration of recording in sec
-N = int(Fs*t_dur)   # number of samples
+Ts = 0.02               # sampling period in sec
+Fs = int(1/Ts)           # sampling frequency
+t_dur = 2               # duration of recording in sec
+N = int(Fs*t_dur)       # number of samples
 
-def record(time_start):
+def record(start_time:  int):
     # Sample voltages and calculate force output
-    Vref = (PIN_ADC0.read_u16() >> 4)
-    Vout_a301 = (PIN_ADC2.read_u16() >> 4)
-    Vout_a401 = (PIN_ADC1.read_u16() >> 4)
+    Vref = PIN_ADC0.read_u16()
+    Vout_a301 = PIN_ADC2.read_u16()
+    Vout_a401 = PIN_ADC1.read_u16()
     F_a301 = fsr.a301().force2(vref=Vref, vout=Vout_a301)
     F_a401 = fsr.a401().force2(vref=Vref, vout=Vout_a401)
-    time_stamp = time.ticks_diff(time.ticks_ms(),ticks_start)
-    data = f"{time_stamp},f'{F_a301},f'{F_a401}\n"
+    time_stamp = time.ticks_diff(time.ticks_ms(),start_time)
+    data = f"{time_stamp},{F_a301},{F_a401}\n"
 
     # Write data to txt file with csv format
     try:
         with open(file_path, "a") as f:
-            f.append(data)
+            f.write(data)
     except OSError as e:
         print(f"Error writing to file: {e}\n")
 
@@ -75,11 +75,11 @@ except OSError as e:
 ticks_start = time.ticks_ms()
 # Write force data
 tim = Timer(-1)
-tim.init(mode=Timer.PERIODIC,
-         period=Ts,
-         callback=record(time_start=ticks_start))
+tim.init(mode=Timer.PERIODIC, freq=Fs, callback=lambda t: record(start_time=ticks_start))
+print("Writing force data...\n")
 time.sleep(t_dur)
 tim.deinit()
+print("Done writing force data.\n")
 
 
 # Verify that the data was written

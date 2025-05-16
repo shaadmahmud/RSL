@@ -9,12 +9,13 @@ These functions are mainly used for:
 class a301:
     def __init__(self) -> None:
         self.bits = 12                              # ADC bit resolution
-        self.adc_scale = 3.3/pow(2,self.bits)       # ADC resolution per volt
+        self.adc_scale = 3.3/pow(2, self.bits)      # ADC resolution per volt
         self.rf = 1.302e6                           # feedback resistance value in ohms
+        self.k = 2520438                            # constant value for force curve
 
     def ohm(self, vref: int, vout: int) -> float:
         """Calculates the resistance measure (ohms) of a FSR
-        
+    
         Args:
             vref: The raw ADC value of the reference voltage
             vout: The raw ADC value of the output voltage
@@ -22,12 +23,12 @@ class a301:
         Returns:
             The resistance measure in ohms of a FSR sensor
         """
-        Rfs = self.rf*((vref/vout)*self.adc_scale)
+        Rfs = self.rf*(vref/vout)
         return Rfs
 
     def force1(self, Rfs: float) -> float:
         """Calculates the force measure (lbs) of a FSR
-        
+    
         Args:
             Rfs: the measured resistance of a FSR sensor
 
@@ -35,7 +36,7 @@ class a301:
             The force measure in pounds of a FSR sensor
         """
 
-        F = 2520438*pow(Rfs, -1.128)
+        F = self.k*pow(Rfs, -1.128)
         return F
 
     def force2(self, vref: int, vout: int) -> float:
@@ -48,8 +49,8 @@ class a301:
         Returns:
             The force measure in pounds of a FSR sensor
         """
-        Rfs = self.rf*((vref/vout)*self.adc_scale)
-        F = 2520438*pow(Rfs, -1.128)
+        Rfs = self.rf*(vref/vout)
+        F = self.k*pow(Rfs, -1.128)
         return F
 
 
@@ -57,9 +58,10 @@ class a301:
 class a401:
     def __init__(self) -> None:
         self.bits = 12                              # ADC bit resolution
-        self.adc_scale = 3.3/pow(2,self.bits)       # ADC resolution per volt
-        self.rf = 1.302e6                           # feedback resistance value in ohms
-   
+        self.adc_scale = 3.3/pow(2, self.bits)      # ADC resolution per volt
+        self.rf = 493e3                             # feedback resistance value in ohms
+        self.k = 154875                             # constant value for force curve
+
     def ohm(self, vref: int, vout: int) -> float:
         """Calculates the resistance measure (ohms) of a FSR
 
@@ -70,9 +72,9 @@ class a401:
         Returns:
             The resistance measure in ohms of a FSR sensor
         """
-        Rfs = self.rf*((vref/vout)*self.adc_scale)
+        Rfs = self.rf*(vref/vout)
         return Rfs
-
+    
     def force(self, Rfs: float) -> float:
         """Calculates the force measure (lbs) of a FSR
 
@@ -83,20 +85,18 @@ class a401:
             The force measure in pounds of a FSR sensor
         """
 
-        F = 493e3*pow(Rfs, -0.8125)
+        F = self.k*pow(Rfs, -0.8125)
         return F
 
     def force2(self, vref: int, vout: int) -> float:
         """Calculates the force measure (lbs) of a FSR
-       
         Args:
             vref: The raw ADC value of the reference voltage
             vout: The raw ADC value of the output voltage
-
         Returns:
             The force measure in pounds of a FSR sensor
         """
-        Rfs = self.rf*((vref/vout)*self.adc_scale)
-        F = 493e3*pow(Rfs, -0.8125)
-        return F
 
+        Rfs = self.rf*(vref/vout)
+        F = self.k*pow(Rfs, -0.8125)
+        return F
