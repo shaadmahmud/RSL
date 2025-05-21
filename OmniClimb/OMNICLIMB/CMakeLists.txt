@@ -43,6 +43,8 @@ add_executable(${PROJECT_NAME}
 # Tell CMake where to find other source code
 add_subdirectory(lib/pico-ads1115/lib build)
 
+add_library(pico_ads1x15 INTERFACE)
+
 pico_set_program_name(${PROJECT_NAME} "adc_ads1115")
 pico_set_program_version(${PROJECT_NAME} "0.1")
 

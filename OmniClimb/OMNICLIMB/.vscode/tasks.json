@@ -2,6 +2,41 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Force Pico into BOOTSEL",
+            "type": "shell",
+            "command": "picotool reboot -f -u",
+            "group": "build", // You can change this if you want it in a different group
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always", // Show the terminal panel
+                "panel": "new"     // Use a new terminal panel for this task
+            },
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "cmd.exe",
+                        "args": [
+                            "/C"
+                        ]
+                    }
+                }
+            }
+        },
+        
+        {
+            "label": "Flash Pico (after BOOTSEL)",
+            "type": "shell",
+            "command": "picotool load -f build/${workspaceFolderBasename}.uf2", // Adjust if your .uf2 is not in build folder
+            "group": "build",
+            "problemMatcher": [],
+            "dependsOn": "Force Pico into BOOTSEL", // This task depends on the reboot task
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+
+        {
             "label": "Compile Project",
             "type": "process",
             "isBuildCommand": true,

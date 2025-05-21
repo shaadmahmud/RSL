@@ -105,7 +105,7 @@ PICO_SDK_PATH:PATH=C:/Users/Lab PC 02/.pico-sdk/sdk/2.1.1
 //STRINGS property for variable: CMAKE_BUILD_TYPE
 CMAKE_BUILD_TYPE-STRINGS:INTERNAL=Debug;Release;MinSizeRel;RelWithDebInfo
 //This is the directory where this CMakeCache.txt was created
-CMAKE_CACHEFILE_DIR:INTERNAL=c:/Users/Lab PC 02/OneDrive - USNH/Documents/GitHub/RSL/OmniClimb/OMNICLIMB
+CMAKE_CACHEFILE_DIR:INTERNAL=c:/Users/Lab PC 02/OneDrive - USNH/Documents/GitHub/RSL/OmniClimb/OMNICLIMB/build
 //Major version of cmake used to create the current loaded cache
 CMAKE_CACHE_MAJOR_VERSION:INTERNAL=3
 //Minor version of cmake used to create the current loaded cache
