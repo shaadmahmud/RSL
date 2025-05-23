@@ -1,12 +1,14 @@
 """ ADS1115 ADC
 The purpose of this script is to test reading and writing ADC values from the
 ADS1115, a 4-channel I2C-enabled 16-bit ADC
+
+Updated: 2025-05-22
 """
 
 # Import necessary libraries
 import uos
 import sdcard
-from utime import ticks_ms, ticks_diff, sleep_ms
+from utime import ticks_ms, ticks_diff
 from machine import I2C, SPI, Pin
 from ads1x15 import ADS1115
 from array import array
@@ -23,19 +25,19 @@ def write2sd(data, file_path):
 
 
 # Initialize I2C & ADC through ADS1115
-i2c = I2C(0, sda=Pin(8), scl=Pin(9), freq=400000)
+i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
 ads = ADS1115(i2c, address=72, gain=1)
 raw2volt = ads.raw_to_v
 
 # Define the Chip Select (CS) pin (GP09)
-cs_pin = Pin(13, mode=Pin.OUT, value=1)
+cs_pin = Pin(9, mode=Pin.OUT, value=1)
 
 # Initialize the SPI bus
 spi = SPI(1,
           baudrate=40000000,
           sck=Pin(10),
           mosi=Pin(11),
-          miso=Pin(12))
+          miso=Pin(8))
 
 sd = sdcard.SDCard(spi=spi, cs=cs_pin, baudrate=20000000)
 

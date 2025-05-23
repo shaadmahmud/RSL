@@ -12,14 +12,14 @@ const uint8_t SDA_PIN = 8;
 const uint8_t SCL_PIN = 9;
 
 // Declare sampling time constants
-const uint64_t conv_wait = 1500;    // conversion wait time in microseconds
-const uint64_t Ts = 20000 - 4*conv_wait;    // sampling interval in microseconds
+const uint64_t conv_wait = 1300;    // conversion wait time in microseconds
+uint64_t Ts = 20000 - 4*conv_wait;    // sampling interval in microseconds
 
 struct ads1115_adc adc;
 
 int main(){
     stdio_init_all();
-    printf("Hello world!\n");
+    
     // Initialize I2C
     i2c_init(I2C_PORT, I2C_FREQ);
     gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);
@@ -51,12 +51,14 @@ int main(){
     float volts_ch3;
 
     // Declare timing data containers
-    uint64_t t_start;
+    absolute_time_t t_start;
+    absolute_time_t t_end;
     uint64_t t_stamp;
-    t_start = time_us_64();
 
     // Read and print the CH0 ADC value
-    while(true){
+    while(true) {
+        t_start = get_absolute_time();  // get start of conversion time
+
         // Configure CH0 conversion
         ads1115_set_input_mux(ADS1115_MUX_SINGLE_0, &adc);
         ads1115_read_adc(&adc_ch0, &adc);   // read CH0
@@ -77,7 +79,9 @@ int main(){
         ads1115_read_adc(&adc_ch3, &adc);   // read CH3
         sleep_us(conv_wait);
         
-        t_stamp = time_us_64() - t_start;
+        t_end = get_absolute_time();    // get end of conversion time
+
+        t_stamp = absolute_time_diff_us(t_start, t_end);    // compute the time it took to perform conversions
 
         // Convert ADC values to volts
         volts_ch0 = ads1115_raw_to_volts(adc_ch0, &adc);    // convert to volts
@@ -85,13 +89,13 @@ int main(){
         volts_ch2 = ads1115_raw_to_volts(adc_ch2, &adc);    // convert to volts
         volts_ch3 = ads1115_raw_to_volts(adc_ch3, &adc);    // convert to volts
 
-        // Print voltage values to terminal
-        //printf("ADC CH0: %u Voltage: %1.3f\n", adc_ch0, volts_ch0);    // print
-        printf("%d  |   %1.3f   |   %1.3f   |   %1.3f   |   %1.3f\n",
-            volts_ch0, volts_ch1, volts_ch2, volts_ch3
+        // Print time stamp voltage values to terminal
+        printf("%lld  |   %1.3f   |   %1.3f   |   %1.3f   |   %1.3f\n",
+            t_stamp, volts_ch0, volts_ch1, volts_ch2, volts_ch3
         );
 
-        sleep_us(Ts); // print every 1.5 ms
+        sleep_us(Ts);
+
     }
 
 }
