@@ -6,7 +6,7 @@ ADS1115, a 4-channel I2C-enabled 16-bit ADC
 # Import necessary libraries
 import uos
 import sdcard
-from utime import ticks_ms, ticks_diff, sleep_ms
+from utime import ticks_ms, ticks_diff
 from machine import I2C, SPI, Pin
 from ads1x15 import ADS1115
 from array import array
@@ -23,18 +23,18 @@ def write2sd(data, file_path):
 
 
 # Initialize I2C & ADC through ADS1115
-i2c = I2C(0, sda=Pin(8), scl=Pin(9), freq=400000)
+i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
 ads = ADS1115(i2c, address=72, gain=1)
 raw2volt = ads.raw_to_v
 
-# Define the Chip Select (CS) pin (GP09)
+# Define the Chip Select (CS) pin (GP13)
 cs_pin = Pin(13, mode=Pin.OUT, value=1)
 
 # Initialize the SPI bus
 spi = SPI(1,
           baudrate=40000000,
-          sck=Pin(10),
-          mosi=Pin(11),
+          sck=Pin(14),
+          mosi=Pin(15),
           miso=Pin(12))
 
 sd = sdcard.SDCard(spi=spi, cs=cs_pin, baudrate=20000000)
@@ -50,9 +50,9 @@ channels = [0, 1, 2, 3]
 _BUFFERSIZE = const(10)
 
 # Initialize data arrays and construct a data matrix
-timestamp = array("I", (0 for _ in range(_BUFFERSIZE)))
-Vref = array("I", (0 for _ in range(_BUFFERSIZE)))
-Vout_a301 = array("I", (0 for _ in range(_BUFFERSIZE)))
+timestamp = array("i", (0 for _ in range(_BUFFERSIZE)))
+Vref = array("i", (0 for _ in range(_BUFFERSIZE)))
+Vout_a301 = array("i", (0 for _ in range(_BUFFERSIZE)))
 Vout_a401 = Vout_a301
 Vout_empty = Vout_a301
 
@@ -94,8 +94,8 @@ for sample in range(_BUFFERSIZE):
     for ch, val in enumerate(channels):
         data[sample][ch+1] = ads.read(rate=7, channel1=channels[ch])
     data[sample][0] = timestamp
-    #data_str = ','.join(map(str, data[sample])) + "\n"
-    #write2sd(data=data_str, file_path=file_path)
+    # data_str = ','.join(map(str, data[sample])) + "\n"
+    # write2sd(data=data_str, file_path=file_path)
 
 # THIS IS GREAT CODE FOR WRITING A BULK PIECE OF DATA
 lines = []
