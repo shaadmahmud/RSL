@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "pico-sdk/src/rp2_common/hardware_resets",
+		"source" : "C:/Users/Lab PC 02/.pico-sdk/sdk/2.1.1/src/rp2_common/hardware_resets"
+	}
+}
