@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: micropython-upip
+Version: 1.2.4
+Summary: Simple package manager for MicroPython.
+Home-page: https://github.com/micropython/micropython-lib
+Author: micropython-lib Developers
+Author-email: micro-python@googlegroups.com
+License: MIT
+Dynamic: author
+Dynamic: author-email
+Dynamic: home-page
+Dynamic: license
+Dynamic: summary

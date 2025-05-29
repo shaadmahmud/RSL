@@ -1,0 +1,93 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Force Pico into BOOTSEL",
+            "type": "shell",
+            "command": "picotool reboot -f -u",
+            "group": "build", // You can change this if you want it in a different group
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always", // Show the terminal panel
+                "panel": "new"     // Use a new terminal panel for this task
+            },
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "cmd.exe",
+                        "args": [
+                            "/C"
+                        ]
+                    }
+                }
+            }
+        },
+        
+        {
+            "label": "Flash Pico (after BOOTSEL)",
+            "type": "shell",
+            "command": "picotool load -f build/${workspaceFolderBasename}.uf2", // Adjust if your .uf2 is not in build folder
+            "group": "build",
+            "problemMatcher": [],
+            "dependsOn": "Force Pico into BOOTSEL", // This task depends on the reboot task
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+
+        {
+            "label": "Compile Project",
+            "type": "process",
+            "isBuildCommand": true,
+            "command": "${userHome}/.pico-sdk/ninja/v1.12.1/ninja",
+            "args": ["-C", "${workspaceFolder}/build"],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": "$gcc",
+            "windows": {
+                "command": "${env:USERPROFILE}/.pico-sdk/ninja/v1.12.1/ninja.exe"
+            }
+        },
+        {
+            "label": "Run Project",
+            "type": "process",
+            "command": "${env:HOME}/.pico-sdk/picotool/2.1.1/picotool/picotool",
+            "args": [
+                "load",
+                "${command:raspberry-pi-pico.launchTargetPath}",
+                "-fx"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "windows": {
+                "command": "${env:USERPROFILE}/.pico-sdk/picotool/2.1.1/picotool/picotool.exe"
+            }
+        },
+        {
+            "label": "Flash",
+            "type": "process",
+            "command": "${userHome}/.pico-sdk/openocd/0.12.0+dev/openocd.exe",
+            "args": [
+                "-s",
+                "${userHome}/.pico-sdk/openocd/0.12.0+dev/scripts",
+                "-f",
+                "interface/cmsis-dap.cfg",
+                "-f",
+                "target/${command:raspberry-pi-pico.getTarget}.cfg",
+                "-c",
+                "adapter speed 5000; program \"${command:raspberry-pi-pico.launchTargetPath}\" verify reset exit"
+            ],
+            "problemMatcher": [],
+            "windows": {
+                "command": "${env:USERPROFILE}/.pico-sdk/openocd/0.12.0+dev/openocd.exe",
+            }
+        }
+    ]
+}
