@@ -13,7 +13,7 @@ from micropython import const
 # Initialize I2C & ADC through ADS1115
 addr = 72
 gain = 1
-i2c = I2C(0, sda=Pin(8), scl=Pin(9), freq=400000)
+i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
 ads = ADS1115(i2c, address=addr, gain=gain)
 
 # Initialize ADC channels and data arrays

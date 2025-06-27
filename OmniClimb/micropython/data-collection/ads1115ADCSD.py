@@ -29,26 +29,15 @@ i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
 ads = ADS1115(i2c, address=72, gain=1)
 raw2volt = ads.raw_to_v
 
-<<<<<<<< HEAD:OmniClimb/micropython/data-collection/writeForceData_singleshot.py
-# Define the Chip Select (CS) pin (GP13)
-cs_pin = Pin(13, mode=Pin.OUT, value=1)
-========
 # Define the Chip Select (CS) pin (GP09)
 cs_pin = Pin(9, mode=Pin.OUT, value=1)
->>>>>>>> 1cd4595e3efbbf7b7b4ceb3ff65b0c9a0ae1ea83:OmniClimb/data-collection/ads1115ADCSD.py
 
 # Initialize the SPI bus
 spi = SPI(1,
           baudrate=40000000,
-<<<<<<<< HEAD:OmniClimb/micropython/data-collection/writeForceData_singleshot.py
-          sck=Pin(14),
-          mosi=Pin(15),
-          miso=Pin(12))
-========
           sck=Pin(10),
           mosi=Pin(11),
           miso=Pin(8))
->>>>>>>> 1cd4595e3efbbf7b7b4ceb3ff65b0c9a0ae1ea83:OmniClimb/data-collection/ads1115ADCSD.py
 
 sd = sdcard.SDCard(spi=spi, cs=cs_pin, baudrate=20000000)
 
@@ -63,9 +52,9 @@ channels = [0, 1, 2, 3]
 _BUFFERSIZE = const(10)
 
 # Initialize data arrays and construct a data matrix
-timestamp = array("i", (0 for _ in range(_BUFFERSIZE)))
-Vref = array("i", (0 for _ in range(_BUFFERSIZE)))
-Vout_a301 = array("i", (0 for _ in range(_BUFFERSIZE)))
+timestamp = array("I", (0 for _ in range(_BUFFERSIZE)))
+Vref = array("I", (0 for _ in range(_BUFFERSIZE)))
+Vout_a301 = array("I", (0 for _ in range(_BUFFERSIZE)))
 Vout_a401 = Vout_a301
 Vout_empty = Vout_a301
 
@@ -107,8 +96,8 @@ for sample in range(_BUFFERSIZE):
     for ch, val in enumerate(channels):
         data[sample][ch+1] = ads.read(rate=7, channel1=channels[ch])
     data[sample][0] = timestamp
-    # data_str = ','.join(map(str, data[sample])) + "\n"
-    # write2sd(data=data_str, file_path=file_path)
+    #data_str = ','.join(map(str, data[sample])) + "\n"
+    #write2sd(data=data_str, file_path=file_path)
 
 # THIS IS GREAT CODE FOR WRITING A BULK PIECE OF DATA
 lines = []
