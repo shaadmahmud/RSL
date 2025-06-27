@@ -1,7 +1,7 @@
 """
 Filename: sensorCharacterization.py
 Author: Blaise O'Mara
-Last update: 2025-06-22
+Last update: 2025-06-27
 Version: 1.1 (Modified for 20ms periodic sampling)
 Description:
     This script records voltage data for characterizing the Tekscan A401-100 and
@@ -31,79 +31,73 @@ ACKNOWLEDGEMENTS:
 import _thread
 import uos
 import sdcard
-from time import sleep_us # Used for small delays
-from utime import ticks_ms, ticks_ms, ticks_diff # For precise timing
-from machine import I2C, SPI, Pin, ADC, Timer # Import Timer for periodic sampling
-from ads1x15 import ADS1115 # ADS1115 driver library
-from array import array # For efficient memory usage with data arrays
-from micropython import const # For defining constants
+from time import sleep_us
+from utime import ticks_ms, ticks_us, ticks_diff
+from machine import I2C, SPI, Pin, ADC, Timer
+from ads1x15 import ADS1115
 
 """GLOBAL VARIABLES - Declared for clarity and access in both cores/ISR"""
 # These variables need to be accessed and modified by both the main thread (Core 0)
 # and the sub-thread (Core 1 for writing), and the Timer Interrupt Service Routine (ISR).
-global t0              # Global start time reference for timestamps (in microseconds)
-global data_load       # Buffer holding data ready to be written to SD card
+global t0               # Global start time reference for timestamps (in microseconds)
+global data_load        # Buffer holding data ready to be written to SD card
 global flag_dataWritten # Flag to signal that data_load is ready
-global irq_busy        # Flag to prevent re-entrant calls to the ISR
-global index_put       # Current index for filling the data_samples buffer
-global data_samples    # The main buffer for collecting samples (list of lists)
-global BUFFERSIZE     # Constant for the size of the data buffer
-global ads             # ADS1115 ADC instance
-global PIN_ADC0        # Pico's internal ADC pin instance
+global irq_busy         # Flag to prevent re-entrant calls to the ISR
+global index_put        # Current index for filling the data_samples buffer
+global data_samples     # The main buffer for collecting samples (list of lists)
+global BUFFERSIZE       # Constant for the size of the data buffer
+global ads              # ADS1115 ADC instance
+global PIN_ADC0         # Pico's internal ADC pin instance
 
 
 """FUNCTIONS"""
 
-# Define the ADC sampling function to run on Core 0 (via Timer ISR)
-# This function is called periodically by the timer. It collects a single sample
-# and manages the buffer for batch writing to the SD card.
-def core0_sample(timer_obj): # The timer callback function receives the timer object as an argument
+# ADC sampling function running on Core 0.
+# This function is called periodically by the timer. It hands off a
+# data buffer for Core 1 to write data to an Micro SD card
+def core0_sample(timer_obj):
     global data_load
     global flag_dataWritten
     global t0
     global irq_busy
     global index_put
-    global data_samples # Access the global data buffer
-    global ads          # Access the global ADS1115 instance
-    global PIN_ADC0     # Access the global Pico ADC instance
+    global data_samples
+    global ads
+    global PIN_ADC0
     global BUFFERSIZE
 
     # Check if the ISR is already busy processing a previous call.
-    # This prevents issues if the ADC read/processing takes longer than the timer period.
+    # If not, declare that it's busy
     if irq_busy:
         return
-    irq_busy = True # Set busy flag to indicate ISR is active
+    irq_busy = True
 
-    # Only process if there's space left in the current buffer batch
     if index_put < BUFFERSIZE:
-        current_time_us = ticks_ms() # Capture current time for timestamping
+        current_time_us = ticks_ms()
         
         # Store timestamp (difference from global t0, in microseconds)
         data_samples[index_put][0] = ticks_diff(current_time_us, t0)
         
         # Read all four ADS1115 channels and store them
-        # Using rate=7 (860 SPS) which provides fast conversions
         for ch in range(4):
             data_samples[index_put][ch+1] = ads.read(rate=7, channel1=ch)
         
-        # Read the Pico's internal ADC (assumed to be for Vref) and store it
+        # Read Vref from the Pico's internal ADC
         data_samples[index_put][5] = PIN_ADC0.read_u16()
         
-        index_put += 1 # Move to the next available slot in the buffer
+        index_put += 1
     
     # Check if the buffer is full after storing the current sample
     if index_put >= BUFFERSIZE:
-        # Create a deep copy of the completed buffer. This is crucial for thread safety,
-        # as core1_write2sd will process this data while core0_sample continues to fill
-        # data_samples with new readings.
+        # Save the data samples in a payload for Core 1 to access
         data_load = [list(row) for row in data_samples]
-        flag_dataWritten = True # Signal the writing thread that a new buffer is ready
-        index_put = 0           # Reset index to start filling the next buffer batch
+        flag_dataWritten = True
+        index_put = 0
 
-    irq_busy = False # Clear busy flag, ISR is done
+    irq_busy = False
 
 
-# Define the SD card writing function to run on Core 1
+# Data writing function running on Core 1
 def core1_write2sd(file_path):
     global data_load
     global flag_dataWritten
@@ -111,9 +105,7 @@ def core1_write2sd(file_path):
     while True:
         # This thread continuously checks if new data is ready to be written
         if flag_dataWritten is True:
-            t_start = ticks_ms()    # Capture start time of the write operation
-            
-            # Transform the collected data into a CSV-formatted string
+            t_start = ticks_ms()
             lines = []
             for row_array in data_load:
                 row_str = ','.join(map(str, row_array))
@@ -128,34 +120,33 @@ def core1_write2sd(file_path):
                 print(f"Error writing to file: {e}\n")
             
             t_2write = ticks_diff(ticks_ms(), t_start)
-            print(f"Time to write:{t_2write} ms\n") # Print time taken for writing
+            print(f"Time to write:{t_2write} ms\n")
             
-            flag_dataWritten = False # Clear the flag, data has been written
+            flag_dataWritten = False
         
-        # Add a small delay to yield CPU. This prevents this thread from
-        # busy-looping when there's no data to write, allowing other tasks to run.
-        sleep_us(100) # Yield CPU for 100 microseconds
+        # Add a small delay to yield CPU when data isn't ready
+        sleep_us(100)
 
 
 """INITIALIZATION"""
 # Declare constants
-BUFFERSIZE = 100      # Number of samples to collect before writing a batch to SD card
-ADC_SAMPLE_PERIOD_MS = 20    # Desired ADC sampling rate in milliseconds (20ms per sample)
+BUFFERSIZE = 100
+ADC_SAMPLE_PERIOD_MS = 20
 
 # Initialize ADC pin for Vref (Pico's internal ADC on GP26)
 PIN_ADC0 = ADC(26)
 
-# Initialize I2C bus (I2C0 on SDA=GP16, SCL=GP17) and ADS1115 ADC
-i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000) # 400kHz I2C frequency
-ads = ADS1115(i2c, address=72, gain=1) # Default ADS1115 address is 0x48 (72 decimal), gain set to 1
+# Initialize I2C bus and ADS1115 ADC
+i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
+ads = ADS1115(i2c, address=72, gain=1)
 
 # SD card setup
 # Define the Chip Select (CS) pin (GP13) for the SD card module
 cs_pin = Pin(13, mode=Pin.OUT, value=1)
 
-# Initialize the SPI bus (SPI1 on SCK=GP14, MOSI=GP15, MISO=GP12) for SD card communication
+# Initialize the SPI bus for SD card communication
 spi = SPI(1,
-          baudrate=20000000, # SPI bus speed (20MHz)
+          baudrate=20000000,
           sck=Pin(14),
           mosi=Pin(15),
           miso=Pin(12))
@@ -164,14 +155,10 @@ spi = SPI(1,
 sd = sdcard.SDCard(spi=spi, cs=cs_pin, baudrate=20000000)
 
 # Initialize data structure for collecting samples.
-# Each sample will be a list: [timestamp, ch0_val, ch1_val, ch2_val, ch3_val, Vref_val]
-# This creates a list of lists, pre-allocated with zeros.
-# BUFFERSIZE rows (for each sample batch), 6 columns (timestamp + 5 ADC readings)
+# There is a timestamp, the four ADC channels, and Vref
 data_samples = [[0 for _ in range(6)] for _ in range(BUFFERSIZE)]
 
-# Initialize data_load as a deep copy of data_samples' structure.
-# This ensures that when data_load is updated, it doesn't just point to data_samples,
-# preventing potential corruption during writes.
+# Initialize data_load
 data_load = [list(row) for row in data_samples]
 
 # Define file path for saving data on the SD card
@@ -188,39 +175,35 @@ try:
         uos.mkdir(file_base)
         print(f"Created directory: {file_base}\n")
     except OSError:
-        # Directory already exists, or other OS error
-        pass # Ignore if directory already exists
+        pass
 except OSError as e:
     print(f"Error mounting SD card: {e}. Ensure SD card is inserted and formatted correctly.\n")
-    # In a production environment, you might want to halt execution or indicate failure here.
 
 """WRITE HEADER TO FILE"""
 # The header defines the columns in the output CSV file.
-header = "Time (us),ch0,ch1,ch2,ch3,Vref\n" # Timestamps are in microseconds
+header = "Time (us),ch0,ch1,ch2,ch3,Vref (V)\n"
 try:
-    with open(file_path, "w") as f: # Open in write mode ('w') to clear existing content and write header
+    with open(file_path, "w") as f:
         f.write(header)
     print(f"Header written to {file_path}\n")
 except OSError as e:
     print(f"Error writing header to file: {e}\n")
 
 """DEFINE THREADS AND CONTROL FLAGS INITIAL STATE"""
-flag_dataWritten = False # Initially, no data is ready for writing
-irq_busy = False         # Initially, the ISR is not busy
-index_put = 0            # Start filling the buffer from the beginning
-t0 = ticks_ms()          # Record the script's start time in microseconds
+flag_dataWritten = False
+irq_busy = False
+index_put = 0
+t0 = ticks_ms()     # initial start time
 
 # Start the SD card writing thread on the second core (Core 1).
-# This thread will run independently, waiting for the flag_dataWritten to be set.
 thread_1 = _thread.start_new_thread(core1_write2sd, [file_path])
 print("SD card writing thread started on Core 1.\n")
 
+# Prompt user to start data recording
+input("Press Enter to start data recording: ")
+
 """EXECUTE SAMPLING ON CORE 0 VIA TIMER INTERRUPT"""
 # Initialize a periodic timer.
-# Timer(-1) uses a virtual timer (ideal for RP2040).
-# mode=Timer.PERIODIC means it will trigger repeatedly.
-# period=ADC_SAMPLE_PERIOD_MS sets the interval between calls (20ms).
-# callback=core0_sample sets the function to be called at each interval.
 tim = Timer(-1)
 tim.init(mode=Timer.PERIODIC, period=ADC_SAMPLE_PERIOD_MS, callback=core0_sample)
 print(f"ADC sampling timer initialized on Core 0 with a period of {ADC_SAMPLE_PERIOD_MS} ms.\n")
@@ -230,27 +213,22 @@ print(f"ADC sampling timer initialized on Core 0 with a period of {ADC_SAMPLE_PE
 print("Sampling and writing process running. Press Ctrl+C to stop.\n")
 try:
     while True:
-        # This loop can be used for other non-blocking tasks.
-        # A small sleep is added to prevent busy-waiting and yield CPU.
         sleep_us(100)
 except KeyboardInterrupt:
     print("\nProgram interrupted by user (Ctrl+C detected).")
 finally:
     # Clean up resources when the program stops
     print("De-initializing timer...")
-    tim.deinit() # Stop the timer
+    tim.deinit()
     
     print("Unmounting SD card...")
     try:
-        uos.umount("/sd") # Unmount the SD card
+        uos.umount("/sd")
         print("SD card unmounted successfully.")
     except OSError as e:
         print(f"Error unmounting SD card: {e}")
 
-    # Optional: Verify that the data was written by attempting to read it.
-    # Note: Reading immediately after unmount might fail or not show all data
-    # due to internal caching/flushing. For robust verification, check the SD card
-    # on a computer or after a device reboot.
+    # Verify that the data was written by attempting to read it.
     print("\n--- Attempting to verify written data (for debugging) ---")
     try:
         with open(file_path, "r") as f:
